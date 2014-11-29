@@ -21,13 +21,17 @@ Types de boîtes disponibles :
  La taille de sortie est `b-a+1`. À la création du slice, on ne sait pas sur
  quelle boîte il va être branché, la taille d'entrée est donc inconnue ; elle
  est donc représentée par une valeur spéciale `Joker`, qui sera remplacée dès
- qu'on branche une boîte à l'entrée du slice. La taille de sortie de cette boîte
+ qu'on branchera une boîte à l'entrée du slice. La taille de sortie de cette boîte
  devra être d'au moins `b`.
  
 Les autres types posent moins de surprises:
  
- * `Perm(Array)`
+ * `Perm(tab::Array{Integer})` : taille d'entrée/sortie : size(tab).
  
- * `SBox(Array)`
+ * `SBox(tab::Array{BitArray})` : SBox, la ta taille d'entrée est log_2(size(tab)) 
+ (la taille du tableau doit être une puissance de 2), la taille de la sortie
+ est la taille des éléments de tab (tous les éléments de tab doivent avoir
+ la même taille).
  
- * `Binop(op::Char, arg::Boite | Constante)`
+ * `Binop(op::Char, func::BoolFunc)` : La taille d'entrée/sortie est celle de 
+ la taille de sortie de func.

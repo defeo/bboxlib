@@ -77,6 +77,21 @@ end
 SBox(table::Array{BitVector,1}) =
     SBox{log2_exact(size(table, 1)), size(table[1], 1)}(table)
 
+type Const{Out} <: BoolFunc{0}{Out}
+    val::BitArray{1}
+end
+Const(val::BitArray{1}) = Const{size(val, 1)}(val)
+
+typealias BoolOut{Out, In} BoolFunc{In, Out}
+type BinOp{In} <: BoolFunc{In, In}
+    op::Char
+    func::BoolOut{In}
+end
+BinOp(op::Char, func::BoolFunc) = BinOp{sizeOut(func)}(op, func)
+XOR(func::BoolFunc) = BinOp('^', func)
+AddMod(func::BoolFunc) = BinOp('+', func)
+MulMod(func::BoolFunc) = BinOp('*', func)
+
 function convert{In, Out}(::Type{BoolFunc{In, Out}}, s::Slice{Joker, Out})
     s.term > In && error("unable to convert Slice: invalid slice bounds")
     Slice{In, Out}(s.start, s.term)
@@ -162,10 +177,15 @@ string(x::Slice) = "[$(x.start):$(x.term)]"
 # The two following lines must throw an error if uncomment:
 #sb = SBox([[BitVector(5) for i in 1:15], [BitVector(6) for i in 1:1]]) #Bad output size
 #sb = SBox([BitVector(5) for i in 1:10]) #Bad input size
+
+# The following lines must work correctly
 sb = SBox([BitVector(5) for i in 1:16]) # input size: 4 (since 16 = 2^4)  
 s = Slice(1, 8)
 s2 = Slice(1, 2)
-println(sb >> (Slice(1,2) + Slice(3,4)) )
-println(s+s)
+xor = XOR(Const(trues(4)))
+println(xor>>sb)
+println()
+println(AddMod(xor>> sb) >> (Slice(1,2) + Slice(3,4)) )
+println()
 println(((s >> Perm([1:8...])) + s) )
 println( Slice(1,16) >> ((s >> Perm([1:8...])) + s) )
