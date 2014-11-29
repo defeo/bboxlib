@@ -1,9 +1,14 @@
+module bboxlib
+
 import Base.string
 import Base.convert
 import Base.size
 import Base.repr
 
 abstract BoolFunc{In, Out}
+
+export <<, >>, +, Slice, SBox, Perm, PermBytes, XOR, MulMod, AddMod, Const, 
+    Input 
 
 size{In, Out}(x::BoolFunc{In, Out}) = (In, Out)
 sizeIn{In}(x::BoolFunc{In}) = In
@@ -53,13 +58,16 @@ end
 Slice(start, term) = Slice{Joker, term - start + 1}(start, term)
 
 type Perm{In} <: BoolFunc{In, In}
+    block::Integer
     perm::Array{Integer, 1}
-    function Perm(x) 
-        is_permutation(x) || error("not a permutation")
-        new(convert(Array{Integer,1},x))
+    function Perm(block, perm) 
+        is_permutation(perm) || error("not a permutation")
+        new(block, convert(Array{Integer,1},perm))
     end
 end
-Perm(x) = Perm{size(x,1)}(x)
+Perm(block::Integer, perm::Vector) = Perm{size(perm,1) * block}(block, perm)
+Perm(perm::Vector) = Perm(1, perm)
+PermBytes(perm::Vector) = Perm(8, perm)
 
 type SBox{In, Out} <: BoolFunc{In, Out}
     table::Array{BitVector,1}
@@ -133,7 +141,7 @@ for T2 in (Seq, BoolFunc)
             error("output size is jokered... how did you do that?")
         
         @eval >>{In, Out, T}(x::($T1){In, T}, y::($T2){Joker, Out}) =  
-            x >> convert(($T2){T, Out}, y)
+            x >> convert(BoolFunc{T, Out}, y)
         
     end
 end
@@ -174,6 +182,7 @@ string(x::Slice) = "[$(x.start):$(x.term)]"
 #1,8,9,16,17,24,25,32,33,40
 #p = Perm([1:128...])
 
+
 ##println(trans)
 #b = trans >> p
 #println(b)
@@ -185,15 +194,19 @@ string(x::Slice) = "[$(x.start):$(x.term)]"
 #sb = SBox([BitVector(5) for i in 1:10]) #Bad input size
 
 # The following lines must work correctly
-sb = SBox([BitVector(5) for i in 1:16]) # input size: 4 (since 16 = 2^4)  
-sb2 = SBox([BitVector(2) for i in 1:4])
-s = Slice(1, 8)
-s2 = Slice(1, 2)
-xor = XOR(Const(trues(4)))
-println(Input(5)>> (Slice(3,3) + Slice(5,5)) >> sb2, "\n")
-println(xor>>sb)
-println()
-println(AddMod(xor>> sb) >> (Slice(1,2) + Slice(3,4)) )
-println()
-println(((s >> Perm([1:8...])) + s) )
-println( Slice(1,16) >> ((s >> Perm([1:8...])) + s) )
+#sb = SBox([BitVector(5) for i in 1:16]) # input size: 4 (since 16 = 2^4)  
+#sb2 = SBox([BitVector(2) for i in 1:4])
+#s = Slice(1, 8)
+#s2 = Slice(1, 2)
+#xor = XOR(Const(trues(4)))
+#println(Input(5)>> (Slice(3,3) + Slice(5,5)) >> sb2, "\n")
+#println(xor>>sb)
+#println()
+#println(AddMod(xor>> sb) >> (Slice(1,2) + Slice(3,4)) )
+#println()
+#println(((s >> Perm([1:8...])) + s) )
+#println( Slice(1,16) >> ((s >> Perm([1:8...])) + s) )
+
+
+end
+
