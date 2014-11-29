@@ -35,3 +35,11 @@ Les autres types posent moins de surprises:
  
  * `Binop(op::Char, func::BoolFunc)` : La taille d'entrée/sortie est celle de 
  la taille de sortie de func.
+ 
+ * `Const(c::BitVector)` : la taille de sortie est la taille du tableau, la 
+ taille d'entrée est 0. Représente une constante (a priori à brancher sur
+ un `BinOp`).
+ 
+ * `Input(s::Integer)` : représente une entrée du circuit de taille s (la sortie
+ est de taille s, l'entrée de taille 0). Peut être utilisé par exemple pour
+ passer le message ou une clef en argument du circuit.

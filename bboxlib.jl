@@ -1,6 +1,7 @@
 import Base.string
 import Base.convert
 import Base.size
+import Base.repr
 
 abstract BoolFunc{In, Out}
 
@@ -92,6 +93,12 @@ XOR(func::BoolFunc) = BinOp('^', func)
 AddMod(func::BoolFunc) = BinOp('+', func)
 MulMod(func::BoolFunc) = BinOp('*', func)
 
+type Input{Out} <: BoolFunc{0, Out}
+    dummy::Integer
+end
+Input(s::Integer) = Input{s}(0)
+repr{Out}(x::Input{Out}) = "Input{" * Out * "}"
+
 function convert{In, Out}(::Type{BoolFunc{In, Out}}, s::Slice{Joker, Out})
     s.term > In && error("unable to convert Slice: invalid slice bounds")
     Slice{In, Out}(s.start, s.term)
@@ -180,9 +187,11 @@ string(x::Slice) = "[$(x.start):$(x.term)]"
 
 # The following lines must work correctly
 sb = SBox([BitVector(5) for i in 1:16]) # input size: 4 (since 16 = 2^4)  
+sb2 = SBox([BitVector(2) for i in 1:4])
 s = Slice(1, 8)
 s2 = Slice(1, 2)
 xor = XOR(Const(trues(4)))
+println(Input(5)>> (Slice(3,3) + Slice(5,5)) >> sb2, "\n")
 println(xor>>sb)
 println()
 println(AddMod(xor>> sb) >> (Slice(1,2) + Slice(3,4)) )
