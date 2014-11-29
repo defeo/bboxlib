@@ -21,6 +21,16 @@ function is_permutation(p)
     return true
 end
 
+function log2_exact(n::Integer)
+    p = 0
+    while n > 1
+        bool(n & 1) && error("not a power of 2")
+        p += 1
+        n >>= 1
+    end
+    p
+end
+
 type Joker end
 
 type Seq{In, Out} <: BoolFunc{In, Out} 
@@ -29,20 +39,6 @@ end
 
 type Cat{In, Out} <: BoolFunc{In, Out} 
     funcs::Vector
-end
-
-type Perm{In} <: BoolFunc{In, In}
-    perm::Array{Integer, 1}
-    function Perm(x) 
-        is_permutation(x) || error("not a permutation")
-        new(convert(Array{Integer,1},x))
-    end
-end
-Perm(x) = Perm{size(x,1)}(x)
-
-type SBox{In, Out} <: BoolFunc{In, Out}
-    table::Array{Integer,1}
-    SBox(x) = new(convert(Array{Integer,1},x))
 end
 
 type Slice{In, Out} <: BoolFunc{In, Out}
@@ -54,6 +50,32 @@ type Slice{In, Out} <: BoolFunc{In, Out}
     end
 end
 Slice(start, term) = Slice{Joker, term - start + 1}(start, term)
+
+type Perm{In} <: BoolFunc{In, In}
+    perm::Array{Integer, 1}
+    function Perm(x) 
+        is_permutation(x) || error("not a permutation")
+        new(convert(Array{Integer,1},x))
+    end
+end
+Perm(x) = Perm{size(x,1)}(x)
+
+type SBox{In, Out} <: BoolFunc{In, Out}
+    table::Array{BitVector,1}
+    function SBox(x)
+        n = size(x, 1)
+        n == 0 && error("SBox is empty")
+
+        l = size(x[1], 1)
+        for i in 2:n
+            @inbounds l == size(x[i], 1) || 
+            error("all the outputs of the SBox must have the same size")
+        end
+        new(x)
+    end
+end
+SBox(table::Array{BitVector,1}) =
+    SBox{log2_exact(size(table, 1)), size(table[1], 1)}(table)
 
 function convert{In, Out}(::Type{BoolFunc{In, Out}}, s::Slice{Joker, Out})
     s.term > In && error("unable to convert Slice: invalid slice bounds")
@@ -137,8 +159,13 @@ string(x::Slice) = "[$(x.start):$(x.term)]"
 #a = p >> trans
 #print(a)	
 
+# The two following lines must throw an error if uncomment:
+#sb = SBox([[BitVector(5) for i in 1:15], [BitVector(6) for i in 1:1]]) #Bad output size
+#sb = SBox([BitVector(5) for i in 1:10]) #Bad input size
+sb = SBox([BitVector(5) for i in 1:16]) # input size: 4 (since 16 = 2^4)  
 s = Slice(1, 8)
 s2 = Slice(1, 2)
+println(sb >> (Slice(1,2) + Slice(3,4)) )
 println(s+s)
 println(((s >> Perm([1:8...])) + s) )
 println( Slice(1,16) >> ((s >> Perm([1:8...])) + s) )
