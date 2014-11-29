@@ -22,7 +22,6 @@ function is_permutation(p)
 end
 
 type Joker end
-+(x::Type{Joker}, y::Type{Joker}) = Joker
 
 type Seq{In, Out} <: BoolFunc{In, Out} 
     seq::Vector
