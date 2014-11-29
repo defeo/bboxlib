@@ -97,7 +97,6 @@ type Input{Out} <: BoolFunc{0, Out}
     dummy::Integer
 end
 Input(s::Integer) = Input{s}(0)
-repr{Out}(x::Input{Out}) = "Input{" * Out * "}"
 
 function convert{In, Out}(::Type{BoolFunc{In, Out}}, s::Slice{Joker, Out})
     s.term > In && error("unable to convert Slice: invalid slice bounds")
