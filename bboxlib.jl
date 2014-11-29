@@ -60,22 +60,29 @@ function convert{In, Out}(::Type{BoolFunc{In, Out}}, s::Slice{Joker, Out})
     Slice{In, Out}(s.start, s.term)
 end
 
+function convert{In, Out}(::Type{BoolFunc{In, Out}}, s::Seq{Joker, Out})
+    first = s.seq[1]
+    firs_new = convert(BoolFunc{In, sizeOut(first)}, first)
+    seq_new = [firs_new ; s.seq[2:end]]
+    Seq{In, Out}(seq_new)
+end  
+
 function convert{In, Out}(::Type{BoolFunc{In, Out}}, c::Cat{Joker, Out})
     funcs = [convert(BoolFunc{In, sizeOut(s)}, s) for s in c.funcs]
     Cat{In, Out}(funcs)
 end        
 
 >>{In, Out, T}(x::BoolFunc{In, T}, y::BoolFunc{T, Out}) = 
-    Seq{In, Out}([x, y])
+    Seq{In, Out}(BoolFunc[x, y])
 
 >>{In, Out, T}(x::Seq{In, T}, y::Seq{T, Out}) = 
     Seq{In, Out}(vcat(x.seq, y.seq))
 
 >>{In, Out, T}(x::Seq{In, T}, y::BoolFunc{T, Out}) = 
-    Seq{In, Out}([x.seq...; y])
+    Seq{In, Out}(BoolFunc[x.seq...; y])
 
 >>{In, Out, T}(x::BoolFunc{In, T}, y::Seq{T, Out}) = 
-    Seq{In, Out}([x; y.seq...])
+    Seq{In, Out}(BoolFunc[x; y.seq...])
 
 for T2 in (Seq, BoolFunc)
     for T1 in (Seq, BoolFunc)
@@ -90,10 +97,17 @@ end
 
 <<(x::BoolFunc, y::BoolFunc) = >>(y,x)
 
-+{In, O1, O2}(x::BoolFunc{In, O1}, y::BoolFunc{In, O2}) = Cat{In, O1+O2}([x; y])
-+{In, O1, O2}(x::Cat{In, O1}, y::Cat{In, O2}) = Cat{In, O1+O2}(vcat(x.funcs, y.funcs))
-+{In, O1, O2}(x::Cat{In, O1}, y::BoolFunc{In, O2}) = Cat{In, O1+O2}([x.funcs...; y])
-+{In, O1, O2}(x::BoolFunc{In, O1}, y::Cat{In, O2}) = Cat{In, O1+O2}([x; y.funcs...])
++{In, O1, O2}(x::BoolFunc{In, O1}, y::BoolFunc{In, O2}) =
+    Cat{In, O1+O2}(BoolFunc[x; y])
+
++{In, O1, O2}(x::Cat{In, O1}, y::Cat{In, O2}) =
+    Cat{In, O1+O2}(vcat(x.funcs, y.funcs))
+    
++{In, O1, O2}(x::Cat{In, O1}, y::BoolFunc{In, O2}) =
+    Cat{In, O1+O2}(BoolFunc[x.funcs...; y])
+
++{In, O1, O2}(x::BoolFunc{In, O1}, y::Cat{In, O2}) =
+    Cat{In, O1+O2}(BoolFunc[x; y.funcs...])
 
 string_as_list(x) = "["join([string(e) for e in x], ", ")"]"
 
@@ -125,5 +139,6 @@ string(x::Slice) = "[$(x.start):$(x.term)]"
 
 s = Slice(1, 8)
 s2 = Slice(1, 2)
-println(s>>(s2 + Slice(3,5)))
-println(s2>>s)
+println(s+s)
+println(((s >> Perm([1:8...])) + s) )
+println( Slice(1,16) >> ((s >> Perm([1:8...])) + s) )
