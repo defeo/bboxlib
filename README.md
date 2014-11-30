@@ -33,8 +33,13 @@ Les autres types posent moins de surprises:
  est la taille des éléments de tab (tous les éléments de tab doivent avoir
  la même taille).
  
- * `Binop(op::Char, func::BoolFunc)` : La taille d'entrée/sortie est celle de 
- la taille de sortie de func.
+ * `UnOp(func::BoolFunc)` : La taille d'entrée/sortie est celle de 
+ la taille de sortie de func. Fonctions disponibles : UXOR, UAddMod, UMulMod.
+ 
+ * `BinOp(s::Integer)` : prend s=k*n bits `a_1, ..., a_kn` en entrée,
+ la sortie est 
+ `(a_1, ..., a_n) op (a_{n+1}, ..., a_{2n}) op ... op (a_{(k-1)n+1}, ..., a_{kn})`. 
+ Fonctions disponibles : BXOR, BAddMod, BMulMod.
  
  * `Const(c::BitVector)` : la taille de sortie est la taille du tableau, la 
  taille d'entrée est 0. Représente une constante (a priori à brancher sur
@@ -43,3 +48,4 @@ Les autres types posent moins de surprises:
  * `Input(s::Integer)` : représente une entrée du circuit de taille s (la sortie
  est de taille s, l'entrée de taille 0). Peut être utilisé par exemple pour
  passer le message ou une clef en argument du circuit.
+ 
