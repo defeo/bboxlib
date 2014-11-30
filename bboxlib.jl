@@ -273,9 +273,11 @@ function Perm(block::Integer, perm::Vector)
 end
 
 
-function Map(func::BoolFunc, repeat)
+function Map(func::BoolFunc, out_size)
     n = sizeOut(func)
-    sum( [Slice(n*(i-1)+1, n*i) >> func for i in 1:repeat] )
+    out_size % n == 0 || 
+        error("out size of Map must be a multiple of the out size of the function")
+    sum( [Slice(n*(i-1)+1, n*i) >> func for i in 1:div(out_size,n)] )
 end
 
 ########################## HELPER FUNCTIONS ####################################

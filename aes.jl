@@ -6,7 +6,7 @@ Key = Input(128, "Clef")
 Message = Input(128, "Message")
 
 Rij = SBox(SBoxes.Rijndeal)
-SubBytes = Map(Rij, 16)
+SubBytes = Map(Rij, 128)
 ShiftRows = PermBytes([1, 2, 3, 4,   6, 7, 8, 5,   11, 12, 9, 10,   16, 13, 14, 15])
 AddRoundKey = UXOR(Key)
 
