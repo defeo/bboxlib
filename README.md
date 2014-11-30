@@ -39,7 +39,8 @@ Les autres types posent moins de surprises:
  * `BinOp(s::Integer)` : prend s=k*n bits `a_1, ..., a_kn` en entrée,
  la sortie est 
  `(a_1, ..., a_n) op (a_{n+1}, ..., a_{2n}) op ... op (a_{(k-1)n+1}, ..., a_{kn})`. 
- Fonctions disponibles : BXOR, BAddMod, BMulMod.
+ Fonctions disponibles : BXOR, BAddMod, BMulMod. Comme à la construction, on ne
+ peut pas déterminer la taille d'entrée, celle-ci est `Joker`.
  
  * `Const(c::BitVector)` : la taille de sortie est la taille du tableau, la 
  taille d'entrée est 0. Représente une constante (a priori à brancher sur
