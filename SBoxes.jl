@@ -24,12 +24,40 @@ const GF8_TIMES_3 = bytes_to_bits(Vector{BitVector},
                             vcat([(x <<1)$x for x in 0x00:0x7F],  
                                  [ (x<<1)$0x1B$x for x in 0x80:0xFF]))
                                  
-const GF8_TIMES_b = bytes_to_bits(Vector{BitVector},
+const GF8_TIMES_9 = bytes_to_bits(Vector{BitVector},
+                                    map(x->  (x<<3) $ x 
+                                      $  ( bool(0x20 & x)? 0x1B : 0x00 )
+                                      # 0x36 = 0x1B<<1
+                                      $  ( bool(0x40 & x)? 0x36 : 0x00 ) 
+                                      # 0x6c = 0x1b<<2
+                                      $  ( bool(0x80 & x)? 0x6c : 0x00 ) ,
+                                    0x00:0xFF))
+
+const GF8_TIMES_B = bytes_to_bits(Vector{BitVector},
                                     map(x-> (x<<1) $ (x<<3) $ x 
                                       $  ( bool(0x20 & x)? 0x1B : 0x00 )
-                                      $  ( bool(0x40 & x)? 0x36 : 0x00 )
+                                      # 0x36 = 0x1B<<1
+                                      $  ( bool(0x40 & x)? 0x36 : 0x00 ) 
+                                      # 0x77 = 0x1b<<2 $ 0x1B
                                       $  ( bool(0x80 & x)? 0x77 : 0x00 ) ,
-                                    0x00:0xFF)
+                                    0x00:0xFF))
 
+const GF8_TIMES_D = bytes_to_bits(Vector{BitVector},
+                                    map(x-> (x<<2) $ (x<<3) $ x 
+                                      $  ( bool(0x20 & x)? 0x1B : 0x00 )
+                                      # 0x2D = 0x1B $ 0x1B<<1
+                                      $  ( bool(0x40 & x)? 0x2D : 0x00 ) 
+                                      # 0x5A = 0x1b<<1 $ 0x1B<<2
+                                      $  ( bool(0x80 & x)? 0x5A : 0x00 ) ,
+                                    0x00:0xFF))
+                                    
+const GF8_TIMES_E = bytes_to_bits(Vector{BitVector},
+                                    map(x-> (x<<1) $ (x<<2) $ (x<<3) 
+                                      $  ( bool(0x20 & x)? 0x1B : 0x00 )
+                                      # 0x2D = 0x1B $ 0x1B<<1
+                                      $  ( bool(0x40 & x)? 0x2D : 0x00 ) 
+                                      # 0x41 = 0x1b $ 0x1b<<1 $ 0x1B<<2
+                                      $  ( bool(0x80 & x)? 0x41 : 0x00 ) ,
+                                    0x00:0xFF))
 end
 

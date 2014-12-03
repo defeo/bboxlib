@@ -7,7 +7,8 @@ import Base.repr
 
 
 export <<, >>, +, Slice, SBox, Perm, PermBytes, UXOR, UMulMod, UAddMod, BXOR,
-    BMulMod, BAddMod, Const, Input, Map, Neutral, BFMatrix, is_closed, inputs
+    BMulMod, BAddMod, Const, Input, Map, Neutral, BFMatrix, is_closed, inputs,
+    BoolFunc
 
 
 ########################### TYPES DEFINITIONS ################################## 
@@ -337,7 +338,6 @@ function is_permutation(p)
     return true
 end
 
-function inv
 function log2_exact(n::Integer)
     p = 0
     while n > 1
