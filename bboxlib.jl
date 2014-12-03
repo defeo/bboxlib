@@ -263,7 +263,7 @@ for (T, op) in ((BAddMod, +), (BMulMod, *))
     @eval function _eval(x::($T), ctxt, in_val::BV)
         in_size, out_size = size(x)
         n = div(in_size, out_size)
-        a = in_val[1:end/n].chuns[1]
+        a = in_val[1:end/n].chunks[1]
         for i in 1:(n-1)
             a = ($op) (a, in_val[end/n*i+1:end/n*(i+1)]) % 2^out_size
         end
@@ -273,7 +273,7 @@ for (T, op) in ((BAddMod, +), (BMulMod, *))
     end
 end
 
-#################### CONVENIENCE FUNCTION ######################################
+#################### CONVENIENCE FUNCTIONS #####################################
 
 Perm(perm::Vector) = Perm(1, perm)
 PermBytes(perm::Vector) = Perm(8, perm)
