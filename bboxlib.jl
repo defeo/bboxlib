@@ -7,7 +7,7 @@ import Base.repr
 
 
 export <<, >>, +, Slice, SBox, Perm, PermBytes, UXOR, UMulMod, UAddMod, BXOR,
-    BMulMod, BAddMod, Const, Input, Map, is_closed, inputs
+    BMulMod, BAddMod, Const, Input, Map, Neutral, BFMatrix, is_closed, inputs
 
 
 ########################### TYPES DEFINITIONS ################################## 
@@ -19,6 +19,8 @@ sizeIn{In}(x::BoolFunc{In}) = In
 sizeOut{In, Out}(x::BoolFunc{In, Out}) = Out
 
 type Joker end
+
+type Neutral <:BoolFunc end 
 
 type Seq{In, Out} <: BoolFunc{In, Out} 
     funcs::Vector
@@ -101,7 +103,11 @@ Input(s::Integer) = Input(s,"")
 >>{In, Out, T}(x::BoolFunc{In, T}, y::Seq{T, Out}) = 
     Seq{In, Out}(BoolFunc[x; y.funcs...])
 
+>>(x::Neutral, y::Neutral) = x
+
 for T2 in (Seq, BoolFunc)
+    @eval >>(x::($T2), y::Neutral) = x
+    @eval >>(x::Neutral, y::($T2)) = y
     for T1 in (Seq, BoolFunc)
         @eval >>{In, Out}(x::($T1){In,Joker}, y::($T2){Joker,Out})=
             error("output size is jokered... how did you do that?")
@@ -113,6 +119,9 @@ for T2 in (Seq, BoolFunc)
 end
 
 <<(x::BoolFunc, y::BoolFunc) = >>(y,x)
+<<(x::Neutral, y::Neutral) = x
+<<(x::BoolFunc, y::Neutral) = x
+<<(x::Neutral, y::BoolFunc) = y
 
 ########################### CONCATENATION ######################################
 
@@ -127,6 +136,10 @@ end
 
 +{In, O1, O2}(x::BoolFunc{In, O1}, y::Cat{In, O2}) =
     Cat{In, O1+O2}(BoolFunc[x; y.funcs...])
+
++(x::Neutral, y::Neutral) = x
++(x::BoolFunc, y::Neutral) = x
++(x::Neutral, y::BoolFunc) = y
     
 ####################### CONVERSION #############################################
 
@@ -272,7 +285,6 @@ function Perm(block::Integer, perm::Vector)
     Cat{n, n}(funcs)
 end
 
-
 function Map(func::BoolFunc, out_size)
     n = sizeOut(func)
     out_size % n == 0 || 
@@ -280,6 +292,36 @@ function Map(func::BoolFunc, out_size)
     sum( [Slice(n*(i-1)+1, n*i) >> func for i in 1:div(out_size,n)] )
 end
 
+
+function BFMatrix(mat::Matrix{Union(BoolFunc, Neutral)}, law::Type)
+    res = Neutral()
+    for i in 1:size(mat, 1)
+        out_block_size, in_block_size = -1, -1
+        for j in 1:size(mat, 2)
+            if mat[i,j] != Neutral() && out_block_size == -1
+                in_block_size, out_block_size = size(mat[i,j])
+                in_block_size != Joker() || 
+                    error("in size of the blocks of a matrix can not be Joker")
+            elseif mat[i,j] != Neutral() && size(mat[i,j]) != (in_block_size, out_block_size)
+                error("all the blocks of a line of a matrix must have the same size")
+            end
+        end
+        in_block_size != -1 ||
+            error("a whole line of a matrix can not be \"Neutral\"")
+        line = Neutral()
+        for j in 1:size(mat,2)
+            s = Slice(in_block_size*(j-1)+1, in_block_size*j)
+            if mat[i,j] == Neutral()
+                line += s
+            else
+                line += s >> mat[i,j]
+            end
+        end
+        line >>= law(out_block_size)
+        res += line
+    end
+    res
+end
 ########################## HELPER FUNCTIONS ####################################
 
 function is_permutation(p)
@@ -295,6 +337,7 @@ function is_permutation(p)
     return true
 end
 
+function inv
 function log2_exact(n::Integer)
     p = 0
     while n > 1

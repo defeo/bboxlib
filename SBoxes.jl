@@ -23,6 +23,13 @@ const GF8_TIMES_2 = bytes_to_bits(Vector{BitVector},
 const GF8_TIMES_3 = bytes_to_bits(Vector{BitVector},
                             vcat([(x <<1)$x for x in 0x00:0x7F],  
                                  [ (x<<1)$0x1B$x for x in 0x80:0xFF]))
+                                 
+const GF8_TIMES_b = bytes_to_bits(Vector{BitVector},
+                                    map(x-> (x<<1) $ (x<<3) $ x 
+                                      $  ( bool(0x20 & x)? 0x1B : 0x00 )
+                                      $  ( bool(0x40 & x)? 0x36 : 0x00 )
+                                      $  ( bool(0x80 & x)? 0x77 : 0x00 ) ,
+                                    0x00:0xFF)
 
 end
 
