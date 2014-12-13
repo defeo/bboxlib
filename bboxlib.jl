@@ -8,7 +8,7 @@ import Base.repr
 
 export <<, >>, +, Slice, SBox, Perm, PermBytes, UXOR, UMulMod, UAddMod, BXOR,
     BMulMod, BAddMod, Const, Input, Map, Neutral, BFMatrix, is_closed, inputs,
-    BoolFunc
+    BoolFunc, size, sizeIn, sizeOut, BFeval
 
 
 ########################### TYPES DEFINITIONS ################################## 
@@ -43,7 +43,7 @@ Slice(start, term) = Slice{Joker, term - start + 1}(start, term)
 
 
 type SBox{In, Out} <: BoolFunc{In, Out}
-    table::Array{BitVector,1}
+    table::Vector{BitVector}
     function SBox(x)
         n = size(x, 1)
         n == 0 && error("SBox is empty")
@@ -198,19 +198,18 @@ is_closed(x::Input) = true
 is_closed(x::Seq) = is_closed(x.funcs[1]) && _is_closed(x)
 is_closed(x::Cat) = all([is_closed(s) for s in x.funcs])
 
-_inputs(x::BoolFunc, acc) = acc
-_inputs(x::Input, acc) = push!(acc, x)
-_inputs(x::UnOp, acc) = _inputs_list(x.func, acc)
+_inputs!(x::BoolFunc, acc) = acc
+_inputs!(x::Input, acc) = push!(acc, x)
+_inputs!(x::UnOp, acc) = _inputs!(x.func, acc)
 for T in (Seq, Cat)
-    @eval function _inputs_list(x::($T), acc)
+    @eval function _inputs!(x::($T), acc)
         for f in x.funcs
-            _inputs_list(f, acc)
+            _inputs!(f, acc)
         end
         acc
     end
 end
-inputs(x::BoolFunc) = _inputs(x,Set{Input}())
-
+inputs(x::BoolFunc) = _inputs!(x,Set{Input}())
 
 ######################## JULIA - EVALUATION ####################################
 typealias BV BitVector
@@ -273,6 +272,22 @@ for (T, op) in ((BAddMod, +), (BMulMod, *))
     end
 end
 
+function BFeval(x::BoolFunc, ctxt)
+    is_closed(x) || error("the circuit is not closed")
+    ins = inputs(x)
+    lonely_ins = setdiff([input.name for input in ins], Set(keys(ctxt)))
+    isempty(lonely_ins) ||   
+        error("the following inputs don't have any entry in the context dic: "
+              * join(lonely_ins, ", ") )
+    
+    bad_sized_ins = [z.name for z in filter(y-> sizeOut(y) != size(ctxt[y.name],1), ins)]
+    isempty(bad_sized_ins) ||
+        error("the following inputs given in the context are not at the good "
+              * "size: " * join(bad_sized_ins, ", "))
+
+    _eval(x, ctxt, BV(0))
+end
+
 #################### CONVENIENCE FUNCTIONS #####################################
 
 Perm(perm::Vector) = Perm(1, perm)
@@ -324,7 +339,6 @@ function BFMatrix(mat::Matrix{Union(BoolFunc, Neutral)}, law::Type)
     res
 end
 ########################## HELPER FUNCTIONS ####################################
-
 function is_permutation(p)
     n = size(p ,1)
     t = falses(n)
