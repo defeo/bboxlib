@@ -87,51 +87,57 @@ function compile_sl!(x::Cat, p::Program, in_var::Variable)
     out_exp
 end
 
-function compile_sl!(x::UXOR, p::Program, v::Expression)
-    nv_ins = NewVariable(sizeIn(x.func))
+compile_sl!(x::UXOR, p::Program, v::Expression) =
+    XOR(v, compile_sl!(x.func, p, NilExp()))
+    
+function compile_sl!(x::Input, p::Program, v::Expression)
+    nv_ins = NewVariable(sizeIn(x))
     add_instruction!(p, nv_ins)
     in_var = Variable(nv_ins)
-    add_instruction!(p, Affectation(in_var, v))
     compile_sl!(x, p, in_var)
 end
 
-compile_sl!(x::UXOR, p::Program, in_var::Variable) =
-    XOR(in_var, compile_sl!(x.func, p, in_var))
-    
+function compile_sl!(x::Input, p::Program, v::Variable)
+    if x.name == "Message"
+        set_entry!(p, v)
+    else
+        add_arg!(p,v)
+    end
+    v
+end
 
 compile_sl!(x::SBox, p::Program, v::Expression) = AccessTable(x.table, v)
 
 function compile_sl(x::BoolFunc)
-    p = new_program()
-    ins = NewVariable(128)
-    add_instruction!(p, ins)
-    v = Variable(ins)
-    sl_final = compile_sl!(x, p, v)
-    add_instruction!(p, Affectation(v, sl_final))
+    p = Program()
+    sl_final = compile_sl!(x, p, NilExp())
+    v_inout = get_entry(p)
+    add_instruction!(p, Affectation(v_inout, sl_final))
+    set_output!(p, v_inout)
     p
 end
    
 import aes
 
-n = 100
+n = 1
 c = 0
 for i in 1:n
     m = randbool((128,))
     k = randbool((128,))
-    algo = aes.AES(m,k)
+    algo = aes.AES
     p = compile_sl(algo)
     code, mm = compile_python(p)
     f= open("testaes.py","w")
     write(f, code)
     close(f)
-    res_python = readall(`python3 testaes.py`)
-    res_julia = "0x"hex(BFeval(algo, Dict()))
-    println("******************************")
-    println("Python : "res_python)
-    println("Julia : "res_julia)
-    if res_python == res_julia
-        c+=1
-    end
+#    res_python = readall(`python3 testaes.py`)
+#    res_julia = "0x"hex(BFeval(algo, Dict()))
+#    println("******************************")
+#    println("Python : "res_python)
+#    println("Julia : "res_julia)
+#    if res_python == res_julia
+#        c+=1
+#    end
 end
 println("Test AES python/julia : $c/$n passés !")
 

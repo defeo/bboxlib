@@ -2,7 +2,8 @@ module simplelanguage
 
 export Program, NewVariable, FreeVariable, Variable, AccessTable, Affectation,
        add_instruction!, XOR, AND, OR, LShift, RShift, Add, Mul, Mod,
-       Expression, VoidExpression, new_program, compile_python
+       Expression, VoidExpression, new_program, compile_python, NilExp, 
+       set_entry!, set_output!, add_arg!, get_args, get_entry, get_output
        
 ############################ AST Description ###################################
 abstract Instruction
@@ -13,6 +14,8 @@ type NewVariable <: Instruction
     _affected::Union(Integer, Nothing)
 end
 NewVariable(len::Integer) = NewVariable(len, Nothing())
+
+type NilExp <: Expression end
 
 immutable Variable <: Expression 
     ptr::NewVariable
@@ -53,10 +56,28 @@ type AccessTable <: Expression
     index::Expression
 end
 
-typealias Program Vector{Instruction}
+type Program
+    ins::Vector{Instruction}
+    input::Variable
+    output::Variable
+    args::Vector{Variable}
+    function Program()
+        p = new()
+        p.ins = Instruction[]
+        p.args = Variable[]
+        p
+    end
+end
 
-new_program() = Instruction[]
-add_instruction!(p::Program, i::Instruction) = push!(p, i)
+set_entry!(p::Program, v::Variable) =  (p.input = v)
+set_output!(p::Program, v::Variable) = (p.output = v)
+get_entry(p::Program) = p.input
+get_output(p::Program) = p.output
+
+add_arg!(p::Program, v::Variable) = push!(p.args, v)
+get_args(p::Program) = p.args
+add_instruction!(p::Program, i::Instruction) = push!(p.ins, i)
+
 
 
 ####################### Variables and Tables Management ########################
@@ -90,20 +111,22 @@ end
 function compile_python(p::Program)
     code = ""
     mm = MemoryManager()
-    for ins in p
+    for ins in p.ins
         new_line = compile_python!(ins, mm)
         if new_line != ""
-            code *=  new_line * "\n"
+            code *=  "\n\t"*new_line * ""
         end
     end
-    code *= "print(hex(v1),end='')"
     tables = ""
     for (t,i) in mm.tables
         tables *= "t"*string(i)*"=["
         tables *= join(["0x"hex(a) for a in t], ",")
         tables *= "]\n"
     end
-    tables*code, mm
+    args_list = join([compile_python!(v, mm) for v in get_args(p)])
+    res = "def f("compile_python!(get_entry(p), mm)","*args_list*"):"code
+    res *= "\n\treturn "compile_python!(get_output(p),mm)
+    tables*"\n"*res, mm
 end
 
 function compile_python!(x::Variable, mm::MemoryManager)
@@ -116,12 +139,6 @@ function compile_python!(x::NewVariable, mm::MemoryManager)
     return ""
 end
 
-for (T, Op) in ( (AND, "&"), (XOR, "^"), (OR, "|"), (LShift, "<<"),
-                (RShift, ">>"), (Add, "+"), (Mul, "*"), (Mod, "%") )
-    @ eval compile_python!(x::($T), mm::MemoryManager) =
-        "("compile_python!(x.left, mm) * ($Op) * compile_python!(x.right, mm)")"
-end    
-    
 compile_python!(x::Const, mm::MemoryManager) = "0x"hex(x.ptr)
 
 compile_python!(x::Affectation, mm::MemoryManager) =
@@ -130,7 +147,12 @@ compile_python!(x::Affectation, mm::MemoryManager) =
 compile_python!(x::AccessTable, mm::MemoryManager) =
     "t"string(get_table_index!(mm, x.table))"["compile_python!(x.index, mm)"]"
 
-  
+for (T, Op) in ( (AND, "&"), (XOR, "^"), (OR, "|"), (LShift, "<<"),
+                (RShift, ">>"), (Add, "+"), (Mul, "*"), (Mod, "%") )
+    @ eval compile_python!(x::($T), mm::MemoryManager) =
+        "("compile_python!(x.left, mm) * ($Op) * compile_python!(x.right, mm)")"
+end    
+ 
 import Base.hex
     
 function hex(x::BitVector)

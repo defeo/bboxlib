@@ -309,7 +309,7 @@ function Map(func::BoolFunc, out_size)
 end
 
 
-function BFMatrix(mat::Matrix{Union(BoolFunc, Neutral)}, law::Type)
+function BFMatrix(mat::Matrix{BoolFunc}, law::Type)
     res = Neutral()
     for i in 1:size(mat, 1)
         out_block_size, in_block_size = -1, -1
