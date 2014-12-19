@@ -59,7 +59,7 @@ end
 type Program
     ins::Vector{Instruction}
     input::Variable
-    output::Variable
+    output::Expression
     args::Vector{Variable}
     function Program()
         p = new()
@@ -70,7 +70,7 @@ type Program
 end
 
 set_entry!(p::Program, v::Variable) =  (p.input = v)
-set_output!(p::Program, v::Variable) = (p.output = v)
+set_output!(p::Program, v::Expression) = (p.output = v)
 get_entry(p::Program) = p.input
 get_output(p::Program) = p.output
 
@@ -108,25 +108,43 @@ end
 
 #################### Python Compilation ########################################
 
-function compile_python(p::Program)
-    code = ""
+compile_python(p::Program) = compile_python([p])
+
+function compile_python(progs::Vector{Program})
     mm = MemoryManager()
-    for ins in p.ins
-        new_line = compile_python!(ins, mm)
-        if new_line != ""
-            code *=  "\n\t"*new_line * ""
-        end
+    code = compile_python!(progs[1], mm)    
+    for i in 2:size(progs,1)
+        code *= compile_python!(progs[i], mm, get_output(progs[i-1]))
     end
+    args_list = ""#join([compile_python!(v, mm) for v in get_args(p)])
+    res = "def f("compile_python!(get_entry(progs[1]), mm)","*args_list*"):"code
+    res *= "\n\treturn "compile_python!(get_output(progs[end]),mm)
     tables = ""
     for (t,i) in mm.tables
         tables *= "t"*string(i)*"=["
         tables *= join(["0x"hex(a) for a in t], ",")
         tables *= "]\n"
     end
-    args_list = join([compile_python!(v, mm) for v in get_args(p)])
-    res = "def f("compile_python!(get_entry(p), mm)","*args_list*"):"code
-    res *= "\n\treturn "compile_python!(get_output(p),mm)
     tables*"\n"*res, mm
+end
+
+
+function compile_python!(p::Program, mm::MemoryManager)
+    code = ""
+    for ins in p.ins
+        new_line = compile_python!(ins, mm)
+        if new_line != ""
+            code *=  "\n\t"*new_line * ""
+        end
+    end
+    code
+end
+
+function compile_python!(p::Program, mm::MemoryManager, exp_in::Expression)
+    code = compile_python!(p, mm)
+    init = "\n\t"*compile_python!(get_entry(p), mm)*
+                      "="*compile_python!(exp_in, mm)
+    init*code
 end
 
 function compile_python!(x::Variable, mm::MemoryManager)

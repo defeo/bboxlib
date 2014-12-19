@@ -110,10 +110,8 @@ compile_sl!(x::SBox, p::Program, v::Expression) = AccessTable(x.table, v)
 
 function compile_sl(x::BoolFunc)
     p = Program()
-    sl_final = compile_sl!(x, p, NilExp())
-    v_inout = get_entry(p)
-    add_instruction!(p, Affectation(v_inout, sl_final))
-    set_output!(p, v_inout)
+    exp_out = compile_sl!(x, p, NilExp())
+    set_output!(p, exp_out)
     p
 end
    
@@ -126,7 +124,7 @@ for i in 1:n
     k = randbool((128,))
     algo = aes.AES
     p = compile_sl(algo)
-    code, mm = compile_python(p)
+    code, mm = compile_python([p, compile_sl(aes.InvAES)])
     f= open("testaes.py","w")
     write(f, code)
     close(f)
