@@ -1,6 +1,6 @@
 module bboxcompile
 
-export compile_sl!
+export compile_sl
 
 using simplelanguage 
 using bboxlib
@@ -90,53 +90,26 @@ end
 compile_sl!(x::UXOR, p::Program, v::Expression) =
     XOR(v, compile_sl!(x.func, p, NilExp()))
     
-function compile_sl!(x::Input, p::Program, v::Expression)
-    nv_ins = NewVariable(sizeIn(x))
+function compile_sl!(x::Input, p::Program, v::NilExp)
+    nv_ins = NewArg(sizeOut(x))
     add_instruction!(p, nv_ins)
-    in_var = Variable(nv_ins)
-    compile_sl!(x, p, in_var)
-end
+    var = Variable(nv_ins)
 
-function compile_sl!(x::Input, p::Program, v::Variable)
     if x.name == "Message"
-        set_entry!(p, v)
-    else
-        add_arg!(p,v)
+        set_entry!(p, var)
     end
-    v
+    var
 end
 
 compile_sl!(x::SBox, p::Program, v::Expression) = AccessTable(x.table, v)
 
 function compile_sl(x::BoolFunc)
     p = Program()
+    # the entry point of the program will be add during the compilation
+    # when an Input of name "Message" will be encounter.
     exp_out = compile_sl!(x, p, NilExp())
     set_output!(p, exp_out)
     p
 end
    
-import aes
-
-n = 1
-c = 0
-for i in 1:n
-    m = randbool((128,))
-    k = randbool((128,))
-    algo = aes.AES
-    p = compile_sl(algo)
-    code, mm = compile_python([p, compile_sl(aes.InvAES)])
-    f= open("testaes.py","w")
-    write(f, code)
-    close(f)
-#    res_python = readall(`python3 testaes.py`)
-#    res_julia = "0x"hex(BFeval(algo, Dict()))
-#    println("******************************")
-#    println("Python : "res_python)
-#    println("Julia : "res_julia)
-#    if res_python == res_julia
-#        c+=1
-#    end
-end
-println("Test AES python/julia : $c/$n passés !")
-
 end#end module

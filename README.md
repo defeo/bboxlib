@@ -62,7 +62,7 @@ Les autres types posent moins de surprises:
  * `UnOp(func::BoolFunc)` : La taille d'entrée/sortie est celle de 
  la taille de sortie de func. Fonctions disponibles : UXOR, UAddMod, UMulMod.
  
- * `BinOp(s::Integer)` : donne s bits en sortie et prend n=k*s bits
+ * `BinOp(s::Int)` : donne s bits en sortie et prend n=k*s bits
  `a_1, ..., a_{ks}` en entrée, la sortie est 
  `(a_1, ..., a_s) op (a_{s+1}, ..., a_{2s}) op ... op (a_{(k-1)s+1}, ..., a_{ks})`. 
  Fonctions disponibles : BXOR, BAddMod, BMulMod. Comme à la construction, on ne
@@ -72,16 +72,16 @@ Les autres types posent moins de surprises:
  taille d'entrée est 0. Représente une constante (a priori à brancher sur
  un `BinOp`).
  
- * `Input(s::Integer, name::String)` : représente une entrée du circuit de
+ * `Input(s::Int, name::String)` : représente une entrée du circuit de
  taille s (la sortie est de taille s, l'entrée de taille 0). Peut être utilisé
  par exemple pour passer le message ou une clef en argument du circuit.
  
- * `Perm(n=1::Integer, tab::Vector{Integer})` : taille d'entrée/sortie : 
+ * `Perm(n=1::Int, tab::Vector{Int})` : taille d'entrée/sortie : 
  `s*size(tab)`. Effectue une permutation par bloc de `n` bits. Le bloc de bits
  d'entrée n° `i` sera branché sur le bloc de bit de sortie `tab[i]`.
  `PermBytes(t)` est un raccourci pour `Perm(1,t)`.
 
- * `Map(func::BoolFunc, s::Integer)` : donne `s` bits en sortie en dupliquant
+ * `Map(func::BoolFunc, s::Int)` : donne `s` bits en sortie en dupliquant
  la boîte `func` autant de fois que nécessaire (la taille de sortie de `func`
  doit être un multiple de `s`). La taille d'entrée à la construction est 
  `Joker`.
@@ -114,9 +114,10 @@ Simple Language (SL)
 -----------------------------
 Il s'agit d'un module Julia qui peut être indépendamment du projet. Son but est
 de pouvoir générer du code réalisant la même action dans plusieurs langages
-différents (pour l'instant, seul la compilation vers Python est implémenté). Il
-n'est pas Turing complet, son pouvoir d'expression est limité par l'évaluation
-d'opérations arithmétiques et "bits à bits".
+différents (actuellement, la compilation vers Python ou Java sont implémentées).
+Il n'est pas Turing complet, son pouvoir d'expression est limité par 
+l'évaluation d'opérations arithmétiques et "bits à bits" sur des entiers de 
+taille arbitraire.
 
 Il y a deux notions importantes:
 
@@ -130,21 +131,34 @@ Il y a deux notions importantes:
  
  * Les *instructions* sont peu nombreuses :
    - `Affectation(var::Variable, exp::Expression)`
-   - `NewVariable(length::Integer)` 
+   - `NewVariable(length::Int)`
+   - `NewArgument(length::Int)`
    - `FreeVariable(var::Variable)` (non implémenté pour le moment)
    
 Un *programme* est une suite d'instruction. On peut en créer un nouveau 
 grâce à `Program()` et y ajouter des instructions grâce à 
 `add_instruction!(p::Program, ins::Instruction)`. Un programme possède également
-une entrée, une sortie et des arguments ; toutes ces données sont des variables
-de SL. On les définit grâce aux fonctions `set_entry!(p::Program, v::Variable)`,
-`set_output!(p::Program, v:: Variable)` et `add_arg!(p::Program, v::Variable)`.
-L'entrée et la sortie ne peuvent être définie qu'une seule fois. Le nombre 
-d'arguments n'est pas limité et les arguments sont repérés grâce à leur ordre
-d'insertion : le premier argument ajouté est l'argument 1, etc.
+une entrée, une sortie ; toutes ces données sont des variables
+de SL. On les définit grâce aux fonctions `set_entry!(p::Program, v::Variable)`
+et `set_output!(p::Program, v:: Variable)`.
+L'entrée et la sortie ne peuvent être définie qu'une seule fois. 
 
-On peut ainsi chaîner différents programmes : la sortie du premier devient
-l'entrée du second.
+Le nombre d'arguments n'est pas limité et les arguments sont repérés grâce à 
+leur ordre d'insertion : le premier argument ajouté est l'argument 1, etc.
+
+Lors de la compilation, on peut chaîner différents programmes `p1, ..., pn` 
+pour créer un seul programme `P` : l'entrée de `P` est celle de `p1`, la sortie
+de `P` est celle de `pn`, la sortie de `p1` est l'entrée de `p2`, etc. Le 
+nombre d'arguments de `P` est le nombre maximum d'arguments des `pi` ; le 
+premier argument de `P` sera passé en paramètre comme premier argument de tous
+les `pi` ayant au moins un paramètre, le second argument de `P` sera passé en
+paramètre comme second argument à tous les `pi` ayant au moins deux paramètres,
+etc.
+
+Pour compiler un chaînage de plusieurs programmes, on peut utiliser la fonction
+`compile_<langage>([p1, p2, ..., pn], "nomDuProgrammeRésultat")` (suivant le 
+langage choisi, soit une fonction (en Python), soit une classe est créée (en 
+Java).
 
 La création de nouvelle variable est un peu délicate, voici un script type:
 
@@ -165,7 +179,7 @@ réutiliser des noms de variable qui ne sont plus utilisées - même si cette
 fontionnalité n'est pas implémentée pour l'instant).
 
 Pour les variables, il faut explicitement demander au MemoryManager de créer un
-nom avec la fonction `new_variable!(mm::MemoryManager, len::Integer)`.
+nom avec la fonction `new_variable!(mm::MemoryManager, len::Int)`.
 
 Pour les tables, il suffit de demander l'index de la table grâce à 
 `get_table_index!(mm::MemoryManager, t::Vector)` ; le MemoryManager entretient
@@ -193,7 +207,16 @@ compilateur). Ici les variables dans le code créé seront appelés `v1, v2, ...
 
     compile_python!(x::Affectation, mm::MemoryManager) =
         "v"string(x.dest.ptr._affected)"="compile_python!(x.src, mm)
-        
+
+ATTENTION : il faut bien comprendre que le nommage des variables en SL se fait
+tardivement. Ce nommage tardif permet de chaîner facilement des programmes SL,
+mais en contrepartie, il faut bien faire attention à ne pas compiler une 
+variable tant que celle-ci n'a pas été initialisée (nommée). De même, on peut
+récupérer la liste des variables et des tables une fois que tout le programme 
+est compilé grâce au MemoryManager, mais il faut être attentif à bien avoir 
+compilé TOUT le programme (et notamment la sortie du programme) avant de faire 
+cela.
+
 Pour les accès à une table, voici la version pour Python (en Python, on accède
 au ième élément de la liste `L` grâce à `L[i]`). Les tables seront appelés 
 `t1, t2, ...` :
@@ -206,3 +229,58 @@ L'implémentation actuelle du compilateur vers Python produit un module avec
 les tables déclarées en variables globales, et une fonction pour le programme
 avec comme argument l'entrée puis tous les arguments du programme. La fonction
 renvoie la valeur de sortie du programme.
+
+Pour Java le code généré respecte la même structure, mais le tout englobé dans
+une classe (vive les classes inutiles !).
+
+BBox vers SL
+============
+
+Le fichier bboxcompile compile le langage BBox vers du SL. Il suppose que le
+circuit BBox compilé possède une boîte Input nommée "Message" qu'il définit
+comme l'entrée du programme SL.  La sortie du programme SL sera la valeur de
+sortie de la boîte BBox. Les autres boites Input rencontrés sont transformées
+en argument SL (pour notre application cryptographique, il ne doit y avoir qu'un
+seul argument : la clef).
+
+La compilation se fait grâce à la fonction `compile_sl(x::BoolFunc)`.
+
+(Pour l'instant la fonction `compile_sl` ne fait pas de vérification, elle 
+devrait vérifier que le circuit est bien fermé et qu'elle comporte qu'une seule
+boîte Input nommée "Message".)
+
+Pour l'instant, le code Python généré s'exécute plus vite que le code Java (sans
+même compter le temps de compilation du Java).
+
+Todo list
+=========
+
+À faire :
+ - Implémenter d'autres algos en Bbox (Jacques pourrait le faire directement,
+ cela ne me paraît pas beaucoup plus compliqué que de l'écrire sur papier).
+ - Automatiser la chaîne BBox > SL > Java/Python/C avec vérifications des 
+ différentes contraintes (voir avec Jean-Philippe ce qu'il veut précisemment)
+ - Créer le compilo pour C, LA difficulté étant la gestion des grand entiers,
+ je vois plusieurs possibilités :
+    * (mode dégueulasse) : utiliser un outil tel cython ou pyrex (le temps de 
+    compilation est prohibitif, vu qu'il faut embarquer tout l'interpréteur
+    Python).
+    * utiliser une lib C gérant les grands entiers (à voir avec JP ce qu'on a le
+    droit d'utiliser)
+    * se programmer une petite lib qui gère ça et générer la lib à chaque fois
+    (pas de problème de dépendances, la lib doit pas être monstrueuse vu qu'on
+    ne gère que du 128 bits maxi)
+    * faire un truc subtil en compilant le SL de façon intelligente, en prenant
+    en compte les tailles de variable ; par exemple, lors qu'une variable SL
+    de 128 bits est créée, la compilation créée de façon silencieuse deux 
+    entiers non signés C de 64 bits.
+
+Quelques optimisations en vrac :
+ - pour le compilo vers Java, on utilise des BigInteger tout le temps, alors
+ que la plupart du temps, on manipule des octets, ça ralentit sûrement
+ énormément ; si on implémente le dernier point ci-dessus, on peut même éviter
+ complètement le recours à BigInteger.
+ - le code généré comporte un nombre relativement important d'instructions du 
+ genre `(x >> 8) << 8` qui pourraient être simplifiées en `x` ou en `x & 0xff00`
+ - lors du parsing de BBox, transformer les `Slice(a,b) + Slice(b+1,c)` en 
+ `Slice(a, c)`.

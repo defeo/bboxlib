@@ -32,8 +32,8 @@ type Cat{In, Out} <: BoolFunc{In, Out}
 end
 
 type Slice{In, Out} <: BoolFunc{In, Out}
-    start::Integer
-    term::Integer
+    start::Int
+    term::Int
     function Slice(start, term) 
         term >= start > 0 || error("invalid slice bounds")
         new(start, term)
@@ -88,8 +88,8 @@ end
 type Input{Out} <: BoolFunc{0, Out}
     name
 end
-Input(s::Integer, name)=Input{s}(name)
-Input(s::Integer) = Input(s,"")
+Input(s::Int, name)=Input{s}(name)
+Input(s::Int) = Input(s,"")
 
 ############################### SEQUENCING #####################################
 >>{In, Out, T}(x::BoolFunc{In, T}, y::BoolFunc{T, Out}) = 
@@ -292,7 +292,7 @@ end
 
 Perm(perm::Vector) = Perm(1, perm)
 PermBytes(perm::Vector) = Perm(8, perm)
-function Perm(block::Integer, perm::Vector) 
+function Perm(block::Int, perm::Vector) 
     is_permutation(perm) || error("not a permutation")
     p = perm
     n = block * size(perm, 1)
@@ -352,7 +352,7 @@ function is_permutation(p)
     return true
 end
 
-function log2_exact(n::Integer)
+function log2_exact(n::Int)
     p = 0
     while n > 1
         bool(n & 1) && error("not a power of 2")

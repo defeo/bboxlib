@@ -53,6 +53,25 @@ InvAES = Message >> AddRoundKey >> InvMixColumns >> InvShiftRows >> InvSubBytes
 #    end
 #end
 #println("$c/$n tests passés !")
-    
+using bboxcompile;
+using simplelanguage; 
+println("BBox AES parsed.")
+println("Compile BBox to SL...")
+algo = aes.AES
+p = compile_sl(algo)
+println("Done.")
+println("Compile SL to python...")
+code, mm = compile_python([p, compile_sl(aes.InvAES)], "aes")
+f= open("testaes.py","w")
+write(f, code)
+close(f)
+println("Done, result written in testaes.py.")
+println("Compile SL to java...")
+code, mm = compile_java([p, compile_sl(aes.InvAES)], "Testaes")
+f= open("Testaes.java","w")
+write(f, code)
+close(f)
+println("Done, result written in Testaes.java.")
+
 
 end
